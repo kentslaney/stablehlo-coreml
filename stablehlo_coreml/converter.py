@@ -903,6 +903,10 @@ class StableHloConverter(metaclass=StableHloOpsRegistry):
         # but only individual elements.
         dim_numbers = hlo.ScatterDimensionNumbers(op.scatter_dimension_numbers)
         if len(dim_numbers.update_window_dims) > 0:
+            # print(dim_numbers.update_window_dims, op.location)
+            # breakpoint()
+            # context.add_result(op.results[0], context[op.inputs[0].get_name()])
+            # return
             raise ValueError("Scattering with `update_window_dims` is not supported")
 
         # We only support a single operand and a single update tensor
@@ -985,6 +989,7 @@ class StableHloConverter(metaclass=StableHloOpsRegistry):
         scatter_indices = mb.gather(x=scatter_indices, indices=valid_update_indices, axis=0)
         updates = mb.gather(x=updates, indices=valid_update_indices, axis=0)
 
+        # TODO: mapped_operand_shape
         result = mb.scatter_nd(data=operand, indices=scatter_indices, updates=updates, mode=mode)
         context.add_result(op.results[0], result)
 
@@ -1023,6 +1028,7 @@ class StableHloConverter(metaclass=StableHloOpsRegistry):
     def __get_sort_keys_and_directions(self, body: ir.Region, inputs: List) -> List[tuple]:
         # This function parses the comparator to extract sort keys and directions.
         # It supports simple single-key comparators and chained lexicographical comparators.
+        # TODO: op matching validation conditions; trace source for LHS & RHS, verify AndOp LHS
         keys = []
         if not body.blocks:
             return []
