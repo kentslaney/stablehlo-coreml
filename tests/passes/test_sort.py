@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from stablehlo_coreml.sort_utils import stable_argsort
+from stablehlo_coreml.sort_utils import np_stable_argsort as stable_argsort
 
 class TestStableArgsort(unittest.TestCase):
 

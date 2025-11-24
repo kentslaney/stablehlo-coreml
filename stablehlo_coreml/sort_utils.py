@@ -1,4 +1,8 @@
 import numpy as np
+
+from coremltools.converters.mil.mil import Builder as mb
+from coremltools.converters.mil.mil import types
+
 from jaxlib.mlir import ir
 from jaxlib.mlir.dialects.stablehlo import (
     CompareOp, SelectOp, OrOp, AndOp, ConstantOp
@@ -6,7 +10,59 @@ from jaxlib.mlir.dialects.stablehlo import (
 from jax._src.lib.mlir.dialects import hlo
 
 
-def stable_argsort(x, axis=-1, ascending=True, argsort_op=np.argsort):
+# TODO: nan, inf
+def bitcast_float_order(x):
+    negative = mb.less(x=x, y=0.)
+    zero = mb.equal(x=x, y=0.)
+    x = mb.abs(x=x)
+    e_raw = mb.floor_div(x=mb.log(x=x), y=mb.log(x=2.))
+    e_shift = mb.cast(x=mb.add(x=e_raw, y=127.), dtype="uint32")
+    fractional = mb.sub(x=mb.real_div(x=x, y=mb.pow(x=2., y=e_raw)), y=1.)
+    mantissa = mb.cast(x=mb.floor(x=mb.mul(x=fractional, y=2. ** 23)), dtype="uint32")
+    bits = mb.add(x=mb.mul(x=e_shift, y=2 ** 23), y=mantissa)
+    ordered = mb.select(cond=negative, a=mb.sub(x=0x7FFF_FFFF, y=bits), b=mb.add(x=bits, y=0x8000_0000))
+    return mb.select(cond=zero, a=0x8000_0000, b=ordered)
+
+
+def np_bitcast_float_order(x):
+    x = np.array(x, dtype=np.float32)
+    negative = x < 0
+    zero = x == 0
+    x = np.abs(x)
+    e_raw = np.log(x) // np.log(2)
+    e_shift = np.asarray(e_raw + 127, dtype=np.uint64)
+    fractional = x / 2 ** e_raw - 1
+    mantissa = np.asarray(np.floor(fractional * 2 ** 23), dtype=np.uint64)
+    bits = e_shift * 2 ** 23 + mantissa
+    ordered = np.where(negative, 0x7FFFFFFF - bits, bits + 0x80000000)
+    return np.where(zero, 0x80000000, ordered)
+
+
+def stable_argsort_32(x, axis=-1, ascending=True):
+    assert x.dtype.width == 32
+    x = mb.cast(x=np.array(3.1415), dtype="fp32")
+    print(bitcast_float_order(x))
+    breakpoint()
+
+    indicer = np.indices(x.shape)[axis].astype(np.uint64)
+    if isinstance(x.dtype, ir.F32Type):
+        ordered = bitcast_float_order(x)
+    elif x.dtype.is_unsigned():
+        ordered = mb.cast(x=x, dtype=np.uint64)
+    else:
+        negative = mb.less(x=x, y=0)
+        bits = mb.cast(x=mb.abs(x=x), dtype=np.uint64)
+        ordered = mb.select(cond=negative, a=mb.sub(x=0x7FFFFFFF, y=bits), b=mb.add(x=bits, y=0x80000000))
+
+    if not ascending:
+        ordered = mb.sub(a=0xFFFFFFFF, b=ordered)
+
+    composite_key = mb.add(a=mb.mul(a=ordered, b=2 ** 32), b=indices)
+
+    return mb.argsort(x=composite_key, axis=axis)
+
+
+def np_stable_argsort(x, axis=-1, ascending=True, argsort_op=np.argsort):
     """
     Implements a stable argsort using an unstable argsort op.
 
