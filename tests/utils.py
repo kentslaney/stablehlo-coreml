@@ -110,6 +110,7 @@ def run_and_compare_hlo_module(
     rtol=1e-05,
 ):
     mil_program = convert(hlo_module, minimum_deployment_target=ct.target.iOS18)
+    print(mil_program)
     program_complexity = _count_program_complexity(mil_program)
     if program_complexity > max_complexity:
         raise ValueError(
