@@ -441,6 +441,19 @@ def test_multi_input_argsort():
     ))
 
 
+def test_gather_cast():
+    def sort_dim_0(k1, k2):
+        return jax.lax.sort([k1, k2], dimension=0, num_keys=1)
+
+    k1 = jnp.array([1, 3, 1, 4, 3, 5, 4], dtype=jnp.int32)
+    k2 = jnp.array([0, 4, 0, 4, 0, -21, -12], dtype=jnp.int32)
+    run_and_compare_specific_input(sort_dim_0, (k1, k2))
+
+    k1 = jnp.array([1, 3, 1, 4, 3, 5, 4], dtype=jnp.int32)
+    k2 = jnp.array([0, 4, 0, 4, 0, 0x1_0000, 0x1_0010], dtype=jnp.int32)
+    run_and_compare_specific_input(sort_dim_0, (k1, k2))
+
+
 def test_massive_sort():
     def sort_dim_0(k1, k2):
         return jax.lax.sort([k1, k2], dimension=0, num_keys=2)
