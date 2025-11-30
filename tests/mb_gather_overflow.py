@@ -3,23 +3,20 @@ import coremltools as ct
 from coremltools.converters.mil.mil import Builder as mb
 from coremltools.converters.mil.mil import types
 
-def check_size(n, target):
-    @mb.program(input_specs=[
-        mb.TensorSpec(shape=(n,), dtype=types.int32),
-        mb.TensorSpec(shape=(1,), dtype=types.int32)
-    ])
-    def prog(x, indices):
-        out = mb.gather_along_axis(x=x, indices=indices, axis=0, name="output")
-        return out
+x_val = np.array([0, 4, 0, 4, 0, 0x1_0000, 0x1_0010], dtype=np.int32)
+indices_val = np.array([5, 6], dtype=np.int32)
 
-    model = ct.convert(prog, source='milinternal', convert_to="mlprogram", compute_precision=ct.precision.FLOAT32)
+@mb.program(input_specs=[
+    mb.TensorSpec(shape=x_val.shape, dtype=types.int32),
+    mb.TensorSpec(shape=indices_val.shape, dtype=types.int32)
+])
+def prog(x, indices):
+    out = mb.gather_along_axis(x=x, indices=indices, axis=0, name="output")
+    return out
 
-    x_val = np.arange(n, dtype=np.int32)
-    indices_val = np.array([target], dtype=np.int32)
+model = ct.convert(prog, source='milinternal', convert_to="mlprogram", compute_precision=ct.precision.FLOAT32)
 
-    prediction = model.predict({"x": x_val, "indices": indices_val})
-    result = prediction["output"]
+prediction = model.predict({"x": x_val, "indices": indices_val})
+result = prediction["output"]
 
-    print(f"{n:#_x} {target:#_x} {result[0]:#_x}")
-
-check_size(0x10_0010, 0x10_0008)
+print(f"{result[0]:#_x} {result[1]:#_x}")
