@@ -2,6 +2,11 @@ import jax
 import jax.numpy as jnp
 from functools import partial
 
+# temporary namespace patch to enable pdb readline, which hatch breaks
+import pathlib, sys
+sys.path.insert(0, str(pathlib.Path(__file__).parents[1]))
+# end of patch
+
 from tests.utils import run_and_compare, run_and_compare_specific_input, get_model_instruction_types
 
 
@@ -445,8 +450,13 @@ def test_gather_cast():
     def sort_dim_0(k1, k2):
         return jax.lax.sort([k1, k2], dimension=0, num_keys=1)
 
-    k1 = jnp.array([1, 3, 1, 4, 3, 5, 4], dtype=jnp.int32)
+    def sort_dim_0_unstable(k1, k2):
+        return sort_dim_0(k1, k2)
+
+    k1 = jnp.array([1, 2, 0, 4, 3, 5, 6], dtype=jnp.int32)
     k2 = jnp.array([0, 4, 0, 4, 0, 0x1_0000, 0x1_0010], dtype=jnp.int32)
+    run_and_compare_specific_input(sort_dim_0_unstable, (k1, k2))
+    print("<<< unstable sort, no casting problems", "=" * 80, ">>> stable sort, casting problems", sep="\n")
     run_and_compare_specific_input(sort_dim_0, (k1, k2))
 
     k1 = jnp.array([1, 3, 1, 4, 3, 5, 4], dtype=jnp.int32)
@@ -506,3 +516,6 @@ def test_compare_bool():
         jnp.array([True, False, True], dtype=jnp.bool_),
         jnp.array([True, True, False], dtype=jnp.bool_)
     ))
+
+if __name__ == "__main__":
+    test_gather_cast()

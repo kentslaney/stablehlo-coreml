@@ -121,7 +121,8 @@ def run_and_compare_hlo_module(
     pipeline = DEFAULT_HLO_PIPELINE
     # We temporarily avoid fp16 conversions in tests because of https://github.com/apple/coremltools/issues/2324
     passes_to_remove = [
-         'common::add_fp16_cast'
+         'common::add_fp16_cast',
+         # 'common::add_int16_cast',
     ]
     pipeline.remove_passes(passes_to_remove)
 
@@ -132,6 +133,7 @@ def run_and_compare_hlo_module(
         pass_pipeline=pipeline,
         compute_units=ct.ComputeUnit.CPU_ONLY,
     )
+    print(cml_model._get_mil_internal())
 
     # Generate random inputs that matches cml_model input spec
     cml_input_key_values = {}
