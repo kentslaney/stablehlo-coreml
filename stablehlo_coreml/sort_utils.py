@@ -139,6 +139,9 @@ def stable_argsort(x, axis=-1, ascending=True):
     arange = np.indices(x.shape)[axis]
     mask = bitcast_window(x, x.shape[axis])
     splits = bitcast_split(x, mask, ascending)
+    # return mb.cast(x=bitcast_int(x)[0], dtype="int32")
+    # return bitcast_int(x)[1]
+    return splits[2]
 
     def shifted(x):
         return mb.add(x=mb.mul(x=x, y=2 ** (get_mil_type_bit_width(x) - 1 - mask)), y=arange)

@@ -770,6 +770,22 @@ def test_multi_input_argsort():
     ))
 
 
+def test_tmp():
+    def sort_dim_0(k1, k2):
+        return jax.lax.sort([k1, k2], dimension=0, num_keys=2)
+
+    def check_size(size):
+        key = jax.random.PRNGKey(0)
+        k1 = jax.random.randint(key, (size,), 0, 1_000, dtype=jnp.int32)
+        try:
+            run_and_compare_specific_input(jnp.argsort, (k1,))
+        except AssertionError as e:
+            print(next(i for i in e.args[0].split("\n") if "ACTUAL" in i))
+
+    check_size(0x40_0000)
+    assert False
+
+
 def test_sort_int16_casting():
     run_and_compare_specific_input(partial(jnp.argsort, stable=True),
                                    (jnp.array([10, 5, 10, 0x1_0010, 10, 0x5_0000, 10, 5, 10, 0x1_0000, 5], dtype=jnp.int32),))
