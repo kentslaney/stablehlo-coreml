@@ -521,7 +521,8 @@ class StableHloConverter(metaclass=StableHloOpsRegistry):
             # Replicate data along dimension `dim` until the result dimension matches
             assert result_shape[result_dim] % current_shape == 0
             result_tiling[result_dim] = result_shape[result_dim] // current_shape
-        x = mb.tile(x=x, reps=result_tiling)
+        if not all(i == 1 for i in result_tiling):
+            x = mb.tile(x=x, reps=result_tiling)
 
         context.add_result(op.result, x)
 
@@ -1036,7 +1037,7 @@ class StableHloConverter(metaclass=StableHloOpsRegistry):
             1 if i in dim_mapping or i in dim_batches else
             operand.shape[i] for i in range(operand_rank)]
         )
-        if dim_batches == dim_numbers.start_indices_batching_dims and \
+        if len(dim_batches) < 2 and dim_batches == dim_numbers.start_indices_batching_dims and \
                 (not dim_batches or np.max(dim_batches) < len(dim_batches)) and \
                 np.all(np.array(op.slice_sizes) == inferred_sizes):
             upper, lower = [operand.shape[i] - 1 for i in dim_mapping], [0] * len(dim_mapping)
