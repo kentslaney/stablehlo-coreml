@@ -1037,7 +1037,7 @@ class StableHloConverter(metaclass=StableHloOpsRegistry):
             1 if i in dim_mapping or i in dim_batches else
             operand.shape[i] for i in range(operand_rank)]
         )
-        if len(dim_batches) < 2 and dim_batches == dim_numbers.start_indices_batching_dims and \
+        if dim_batches == dim_numbers.start_indices_batching_dims and \
                 (not dim_batches or np.max(dim_batches) < len(dim_batches)) and \
                 np.all(np.array(op.slice_sizes) == inferred_sizes):
             upper, lower = [operand.shape[i] - 1 for i in dim_mapping], [0] * len(dim_mapping)
@@ -1049,7 +1049,16 @@ class StableHloConverter(metaclass=StableHloOpsRegistry):
             if len(dim_mapping) == 1:
                 if start_indices_rank > 1:
                     clamped_indices = mb.squeeze(x=clamped_indices, axes=(start_indices_rank - 1,))
-                result = mb.gather(x=operand, indices=clamped_indices, axis=dim_mapping[0], batch_dims=len(dim_batches))
+
+                if len(dim_batches) == 2:
+                    out = operand.shape[:2]
+                    raveled = (operand.shape[0] * operand.shape[1],)
+                    operand = mb.reshape(x=operand, shape=raveled + operand.shape[2:])
+                    clamped_indices = mb.reshape(x=clamped_indices, shape=raveled + clamped_indices.shape[2:])
+                    result = mb.gather(x=operand, indices=clamped_indices, axis=dim_mapping[0] - 1, batch_dims=1)
+                    result = mb.reshape(x=result, shape=out + result.shape[1:])
+                else:
+                    result = mb.gather(x=operand, indices=clamped_indices, axis=dim_mapping[0], batch_dims=len(dim_batches))
                 context.add_result(op.result, result)
                 return
             elif np.max(dim_mapping) < len(dim_mapping) + len(dim_batches):
