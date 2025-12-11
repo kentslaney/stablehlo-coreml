@@ -7,7 +7,7 @@ from jax._src.lib.mlir.dialects import hlo
 from coremltools.converters.mil.mil import Builder as mb
 from coremltools.converters.mil.mil import types
 
-from .utils import get_mil_type_bit_width
+from .utils import get_mil_type_bit_width, range_along_dim
 
 
 def bitcast_fp(x):
@@ -136,7 +136,7 @@ def bitcast_window(x, n):
 
 
 def stable_argsort(x, axis=-1, ascending=True):
-    arange = np.indices(x.shape)[axis]
+    arange = range_along_dim(x.shape, axis, np.int32)
     mask = bitcast_window(x, x.shape[axis])
     splits = bitcast_split(x, mask, ascending)
 
