@@ -436,9 +436,9 @@ class StableHloConverter(metaclass=StableHloOpsRegistry):
                 indices = mb.argsort(x=inf_masking_nans, axis=sort_dim, ascending=ascending)
                 gathered_key = mb.gather_along_axis(x=inf_masking_nans, indices=indices, axis=sort_dim)
                 n_masked = mb.reduce_sum(x=mb.cast(x=nans, dtype="int32"), axes=(sort_dim,), keep_dims=True)
-                arange = np.indices(key.shape)[sort_dim]
+                arange = range_along_dim(key.shape, sort_dim, np.int32)
                 nan_mask = mb.greater_equal(x=arange, y=mb.sub(x=key.shape[sort_dim], y=n_masked))
-                nan_full = np.full(key.shape, np.nan)
+                nan_full = mb.fill(shape=key.shape, value=np.nan)
                 res = mb.add(x=gathered_key, y=mb.select(cond=nan_mask, a=nan_full, b=0.))
                 context.add_result(op.results[0], res)
                 return
