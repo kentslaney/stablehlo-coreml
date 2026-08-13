@@ -179,7 +179,11 @@ class StableHloConverter(metaclass=StableHloOpsRegistry):
                         new_shape.append(d)
                 shape = new_shape
 
-            func_inputs[arg.get_name()] = mb.placeholder(
+            # considers an argument stateful if marked for buffer donation
+            attrs = hlo_func.arg_attrs[arg.arg_number]
+            donated = 'tf.aliasing_output' in attrs
+            malloc = mb.state_tensor_placeholder if donated else mb.placeholder
+            func_inputs[arg.get_name()] = malloc(
                 shape=shape, dtype=get_mil_type_from_ir(arg.type.element_type)
             )
 
